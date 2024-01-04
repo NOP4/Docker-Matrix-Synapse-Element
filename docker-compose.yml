@@ -1,0 +1,160 @@
+version: '2.3'
+
+services:
+
+  postgres:
+    image: postgres:latest
+    restart: unless-stopped
+    volumes:
+     - postgres-data:/var/lib/postgresql/data
+    networks:
+      traefik_web:
+    environment:
+     - POSTGRES_DB=synapse
+     - POSTGRES_USER=synapse
+     - POSTGRES_PASSWORD=STRONG-PASSWORD
+     - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  redis:
+    image: "redis:latest"
+    restart: "unless-stopped"
+    networks:
+      traefik_web:
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  synapse:
+    image: matrixdotorg/synapse
+    restart: unless-stopped
+    networks:
+      traefik_web:
+    logging:
+      driver: none
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+     - matrixsynapse-data:/data
+    command: "generate"
+    user: "900:900"
+    environment:
+      - PUID = 900
+      - PGID = 900
+      - TZ=Europe/Paris
+      - SYNAPSE_SERVER_NAME=matrix.example.com
+      - SYNAPSE_REPORT_STATS=no
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.enable=true"
+      
+      - traefik.http.routers.example_matrix-static.tls=true
+      - "traefik.http.routers.example_matrix-static.rule=(Host(`matrix.example.com`) && PathPrefix(`/_matrix/static/`))"
+      - "traefik.http.routers.example_matrix-static.entrypoints=websecure"
+      - "traefik.http.routers.example_matrix-static.tls.certresolver=lets-encrypt"
+      - traefik.http.routers.example_matrix-static.middlewares=example_matrix-static-whitelist
+      - traefik.http.middlewares.example_matrix-static-whitelist.ipwhitelist.sourcerange=127.0.0.1/32
+
+      - traefik.http.routers.example_matrix.tls=true
+      - "traefik.http.routers.example_matrix.rule=Host(`matrix.example.com`)"
+      - "traefik.http.routers.example_matrix.entrypoints=websecure"
+      - "traefik.http.routers.example_matrix.tls.certresolver=lets-encrypt"
+      - traefik.http.middlewares.example_matrix.headers.customFrameOptionsValue=ALLOW-FROM https://example.com
+      - traefik.http.middlewares.example_matrix.headers.contentSecurityPolicy=frame-ancestors 'self' example.com *.example.com
+      - traefik.http.middlewares.example_matrix.headers.stsSeconds=155520011
+      - traefik.http.middlewares.example_matrix.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.example_matrix.headers.stsPreload=true
+      - traefik.http.middlewares.example_matrix.headers.customresponseheaders.X-Frame-Options=SAMEORIGIN
+
+      - traefik.http.routers.example_matrixfederation-static.tls=true
+      - "traefik.http.routers.example_matrixfederation-static.rule=(Host(`matrix.example.com`) && PathPrefix(`/_matrix/static/`))"
+      - "traefik.http.routers.example_matrixfederation-static.entrypoints=matrixfederation"
+      - "traefik.http.routers.example_matrixfederation-static.tls.certresolver=lets-encrypt"
+      - traefik.http.routers.example_matrixfederation-static.middlewares=example_matrixfederation-static-whitelist
+      - traefik.http.middlewares.example_matrixfederation-static-whitelist.ipwhitelist.sourcerange=127.0.0.1/32
+      
+      - traefik.http.routers.example_matrixfederation.tls=true
+      - "traefik.http.routers.example_matrixfederation.rule=Host(`matrix.example.com`)"
+      - "traefik.http.routers.example_matrixfederation.entrypoints=matrixfederation"
+      - "traefik.http.routers.example_matrixfederation.tls.certresolver=lets-encrypt"
+      - traefik.http.middlewares.example_matrixfederation.headers.customFrameOptionsValue=ALLOW-FROM https://example.com
+      - traefik.http.middlewares.example_matrixfederation.headers.contentSecurityPolicy=frame-ancestors 'self' example.com *.example.com
+      - traefik.http.middlewares.example_matrixfederation.headers.stsSeconds=155520011
+      - traefik.http.middlewares.example_matrixfederation.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.example_matrixfederation.headers.stsPreload=true
+      - traefik.http.middlewares.example_matrixfederation.headers.customresponseheaders.X-Frame-Options=SAMEORIGIN
+
+
+      - traefik.http.routers.example_matrix-denied01.tls=true
+      - "traefik.http.routers.example_matrix-denied01.rule=(Host(`matrix.example.com`) && PathPrefix(`/_synapse/admin`))"
+      - "traefik.http.routers.example_matrix-denied01.entrypoints=websecure"
+      - traefik.http.routers.example_matrix-denied01.middlewares=example_matrix-denied01-whitelist
+      - traefik.http.middlewares.example_matrix-denied01-whitelist.ipwhitelist.sourcerange=MY-ADMIN-IP-ADDRESS/32
+
+      - traefik.http.routers.example_matrixfederation-denied02.tls=true
+      - "traefik.http.routers.example_matrixfederation-denied02.rule=(Host(`matrix.example.com`) && PathPrefix(`/_synapse/admin`))"
+      - "traefik.http.routers.example_matrixfederation-denied02.entrypoints=matrixfederation"
+      - traefik.http.routers.example_matrixfederation-denied02.middlewares=example_matrixfederation-denied02-whitelist
+      - traefik.http.middlewares.example_matrixfederation-denied02-whitelist.ipwhitelist.sourcerange=MY-ADMIN-IP-ADDRESS/32
+
+  element:
+    image: vectorim/element-web:latest
+    restart: unless-stopped
+    networks:
+      traefik_web:
+    logging:
+      driver: none
+    volumes:
+      - element-app:/app
+    environment:
+      - PUID = 901
+      - PGID = 901
+      - TZ=Europe/Paris
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.enable=true"
+
+      - traefik.http.routers.example_matrix_element.tls=true
+      - "traefik.http.routers.example_matrix_element.rule=Host(`element.example.com`)"
+      - "traefik.http.routers.example_matrix_element.entrypoints=websecure"
+      - "traefik.http.routers.example_matrix_element.tls.certresolver=lets-encrypt"
+           
+      - traefik.http.middlewares.example_matrix_element.headers.customFrameOptionsValue=ALLOW-FROM https://example.com
+      - traefik.http.middlewares.example_matrix_element.headers.contentSecurityPolicy=frame-ancestors 'self' example.com *.example.com
+      - traefik.http.middlewares.example_matrix_element.headers.stsSeconds=155520011
+      - traefik.http.middlewares.example_matrix_element.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.example_matrix_element.headers.stsPreload=true
+      - traefik.http.middlewares.example_matrix_element.headers.customresponseheaders.X-Frame-Options=SAMEORIGIN
+
+  synapse-admin:
+    image: httpd:latest
+    volumes:
+      - synapse-admin-html:/usr/local/apache2/htdocs/
+    restart: unless-stopped
+    networks:
+      traefik_web:
+    environment:
+      - PUID = 902
+      - PGID = 902
+      - TZ=Europe/Paris
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+      - "traefik.enable=true"
+      - traefik.http.routers.example_matrix_synapseadmin-denied01.tls=true
+      - "traefik.http.routers.example_matrix_synapseadmin-denied01.rule=(Host(`matrix.example.com`) && PathPrefix(`/synapseadmin`))"
+      - "traefik.http.routers.example_matrix_synapseadmin-denied01.entrypoints=websecure"
+      - traefik.http.routers.example_matrix_synapseadmin-denied01.middlewares=example_matrix_synapseadmin-denied01-whitelist
+      - traefik.http.middlewares.example_matrix_synapseadmin-denied01-whitelist.ipwhitelist.sourcerange=MY-ADMIN-IP-ADDRESS/32
+
+volumes:
+  synapse-admin-html:
+  postgres-data:
+  matrixsynapse-data:
+  element-app:
+
+networks:
+  traefik_web:
+    external:
+      name: traefik_web

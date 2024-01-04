@@ -1,0 +1,12 @@
+[example-matrix-synapse]
+enabled = true
+filter = example-matrix-synapse
+
+banaction = iptables-mangle-allports[name="example-matrix-synapse"]
+
+logpath = /var/lib/docker/volumes/example_matrix_matrixsynapse-data/_data/server.log
+maxretry = 3
+bantime = 14400
+findtime = 14400
+
+ignoreip =  YOUR-IP-HERE/32

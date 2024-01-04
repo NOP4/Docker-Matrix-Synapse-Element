@@ -1,0 +1,99 @@
+server_name: "matrix.example.com"
+pid_file: /data/homeserver.pid
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    resources:
+      - names: [client, federation]
+        compress: false
+
+database:
+  name: psycopg2
+  args:
+    user: synapse
+    password: DATABASE-PASSWORD
+    database: synapse
+    host: postgres
+    cp_min: 5
+    cp_max: 10
+#  name: sqlite3
+#  args:
+#    database: /data/homeserver.db
+
+log_config: "/data/matrix.example.com.log.config"
+media_store_path: /data/media_store
+registration_shared_secret: "RANDOM-SECRET"
+report_stats: false
+macaroon_secret_key: "random"
+form_secret: "random"
+signing_key_path: "/data/matrix.example.com.signing.key"
+#trusted_key_servers:
+#  - server_name: "matrix.org"
+trusted_key_servers: []
+
+public_baseurl: "https://matrix.example.com"
+
+allow_public_rooms_without_auth: false
+allow_public_rooms_over_federation: false
+
+#allow email
+registrations_require_3pid:
+  - email
+
+email:
+    smtp_host: smtp.example.com
+    smtp_port: 465
+    smtp_user: "matrix@example.com"
+    smtp_pass: "smtp_password"
+    force_tls: true
+    enable_tls: true
+    notif_from: "Matrix server <matrix@example.com>"
+    enable_notifs: true
+    notif_for_new_users: true
+    validation_token_lifetime: 15m
+    require_transport_security: true
+
+url_preview_enabled: true
+
+url_preview_ip_range_blacklist:
+  - '127.0.0.0/8'
+  - '10.0.0.0/8'
+  - '172.16.0.0/12'
+  - '192.168.0.0/16'
+  - '100.64.0.0/10'
+  - '192.0.0.0/24'
+  - '169.254.0.0/16'
+  - '192.88.99.0/24'
+  - '198.18.0.0/15'
+  - '192.0.2.0/24'
+  - '198.51.100.0/24'
+  - '203.0.113.0/24'
+  - '224.0.0.0/4'
+  - '::1/128'
+  - 'fe80::/10'
+  - 'fc00::/7'
+  - '2001:db8::/32'
+  - 'ff00::/8'
+  - 'fec0::/10'
+
+redis:
+  enabled: true
+  host: redis
+  port: 6379
+
+password_config:
+   enabled: true
+   localdb_enabled: true
+   pepper: "RANDOM-STRING"
+
+   policy:
+      enabled: true
+      minimum_length: 15
+      require_digit: true
+      require_symbol: true
+      require_lowercase: true
+      require_uppercase: true
+
+
